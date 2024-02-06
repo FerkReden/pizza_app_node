@@ -20,11 +20,12 @@ class UserService{
             const values = [user.name, user.email, hashedPassword, user.phone];
     
             const data = await new Promise<any>((resolve, reject) => {
-                db.query(sql, values, (err, result) => {
+                db.query(sql, values, (err, result: any) => {
                     if (err) {
                         reject("Error");
                     } else {
-                        resolve(result);
+                        const token = jwt.sign({ userId: result.insertId }, 'your_secret_key', { expiresIn: '1h' });
+                        resolve({ token });
                     }
                 });
             });
