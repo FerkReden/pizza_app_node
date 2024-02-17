@@ -1,35 +1,41 @@
 import { Request, Response } from 'express';
 import db from '../db/mysql.js';
-import { User } from '../models/user.js'
+import { User } from '../models/user'
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 class UserService{
+    private userTokens: { [userId: number]: string } = {};
+
     createUser = async (req: Request, res: Response) => {
         try {
             const user = new User(
+                0,
                 req.body.name,
                 req.body.email,
                 req.body.password,
-                req.body.phone
+                req.body.phone,
+                ''
             );
-    
+
             const hashedPassword = await bcrypt.hash(user.password, 10);
-            
-            const sql = "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)";
-            const values = [user.name, user.email, hashedPassword, user.phone];
-    
+
+            const sql = "INSERT INTO users (name, email, password, phone, token) VALUES (?, ?, ?, ?, ?)";
+            const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
+            const values = [user.name, user.email, hashedPassword, user.phone, token];
+
             const data = await new Promise<any>((resolve, reject) => {
                 db.query(sql, values, (err, result: any) => {
                     if (err) {
                         reject("Error");
                     } else {
-                        const token = jwt.sign({ userId: result.insertId }, 'your_secret_key', { expiresIn: '1h' });
+                        user.id = result.insertId;
+                        user.token = token;
                         resolve({ token });
                     }
                 });
             });
-    
+
             return res.json(data);
         } catch (error) {
             return res.status(500).json({ error: "Internal Server Error" });
@@ -62,7 +68,18 @@ class UserService{
                 if (passwordMatch) {
                     const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
     
-                    return res.json({ token });
+                    const updateTokenSql = "UPDATE users SET token = ? WHERE id = ?";
+                    const updateTokenValues = [token, user.id];
+    
+                    db.query(updateTokenSql, updateTokenValues, (err) => {
+                        if (err) {
+                            return res.status(500).json({ error: "Error updating token in database" });
+                        } else {
+                            user.token = token;
+                            console.log("Generated Token:", token);
+                            return res.json({ token });
+                        }
+                    });
                 } else {
                     return res.status(401).json({ error: "Invalid credentials" });
                 }
@@ -72,7 +89,30 @@ class UserService{
         } catch (error) {
             return res.status(500).json({ error: "Internal Server Error" });
         }
-    }
+    };
+
+    deleteUserById = async (req: Request, res: Response) => {
+        try {
+            const userId = req.params.id; 
+            
+            const sql = "DELETE FROM users WHERE id = ?";
+            const values = [userId];
+
+            const data = await new Promise<any>((resolve, rejects) => {
+                db.query(sql, values, (err, result: any) => {
+                    if (err) {
+                        rejects("Error");
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            return res.json({ message: "User deleted successfully" });
+        } catch (error) {
+            return res.status(500).json({ error: "Internal Server Error" });
+        }
+    };
     
     readUsers = async (req: Request, res: Response) => {
         try {
