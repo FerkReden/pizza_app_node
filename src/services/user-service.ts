@@ -5,8 +5,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 class UserService{
-    private userTokens: { [userId: number]: string } = {};
-
     createUser = async (req: Request, res: Response) => {
         try {
             const user = new User(
@@ -44,52 +42,52 @@ class UserService{
 
     logIn = async (req: Request, res: Response) => {
         try {
-            const email = req.body.email;
-            const password = req.body.password;
-    
-            const sql = "SELECT id, name, email, password FROM users WHERE email = ?";
-            const values = [email];
-    
-            const userData = await new Promise<any>((resolve, reject) => {
-                db.query(sql, values, async (err, result) => {
-                    if (err) {
-                        reject("Error");
-                    } else {
-                        resolve(result);
-                    }
-                });
+          const email = req.body.email;
+          const password = req.body.password;
+      
+          const sql = "SELECT id, name, email, password FROM users WHERE email = ?";
+          const values = [email];
+      
+          const userData = await new Promise<any>((resolve, reject) => {
+            db.query(sql, values, async (err, result) => {
+              if (err) {
+                reject("Error");
+              } else {
+                resolve(result);
+              }
             });
-    
-            if (userData.length > 0) {
-                const user = userData[0];
-    
-                const passwordMatch = await bcrypt.compare(password, user.password);
-    
-                if (passwordMatch) {
-                    const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
-    
-                    const updateTokenSql = "UPDATE users SET token = ? WHERE id = ?";
-                    const updateTokenValues = [token, user.id];
-    
-                    db.query(updateTokenSql, updateTokenValues, (err) => {
-                        if (err) {
-                            return res.status(500).json({ error: "Error updating token in database" });
-                        } else {
-                            user.token = token;
-                            console.log("Generated Token:", token);
-                            return res.json({ token });
-                        }
-                    });
+          });
+      
+          if (userData.length > 0) {
+            const user = userData[0];
+      
+            const passwordMatch = await bcrypt.compare(password, user.password);
+      
+            if (passwordMatch) {
+              const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
+      
+              const updateTokenSql = "UPDATE users SET token = ? WHERE id = ?";
+              const updateTokenValues = [token, user.id];
+      
+              db.query(updateTokenSql, updateTokenValues, (err) => {
+                if (err) {
+                  return res.status(500).json({ error: "Error updating token in database" });
                 } else {
-                    return res.status(401).json({ error: "Invalid credentials" });
+                  user.token = token;
+                  res.setHeader('Authorization', `Bearer ${token}`);
+                  return res.json({ user, token });
                 }
+              });
             } else {
-                return res.status(404).json({ error: "User not found" });
+              return res.status(401).json({ error: "Invalid credentials" });
             }
+          } else {
+            return res.status(404).json({ error: "User not found" });
+          }
         } catch (error) {
-            return res.status(500).json({ error: "Internal Server Error" });
+          return res.status(500).json({ error: "Internal Server Error" });
         }
-    };
+      };
 
     deleteUserById = async (req: Request, res: Response) => {
         try {

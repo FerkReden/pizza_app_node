@@ -1,37 +1,10 @@
 import { Response, Request } from "express";
 import db from '../db/mysql';
 import { Order } from '../models/order';
-const jwt = require('jsonwebtoken');
-
-const getUserIdFromToken = (authorizationHeader: string | undefined): number | null => {
-    if (!authorizationHeader) {
-        return null;
-    }
-
-    const token = authorizationHeader.split(' ')[1];
-    
-    try {
-        const decodedToken: any = jwt.verify(token, 'your_secret_key');
-        return decodedToken.userId;
-    } catch (error) {
-        return null;
-    }
-};
 
 class OrderService{
     createOrder = async (req: Request, res: Response) => {
         try {
-            console.log("All headers:", req.headers);
-
-            const authorizationHeader = req.headers.authorization;
-            console.log("Authorization header:", authorizationHeader);
-
-            const userIdFromToken = getUserIdFromToken(authorizationHeader);
-            console.log("Decoded userId from token:", userIdFromToken);
-
-        if (userIdFromToken !== req.body.userId) {
-            return res.status(403).json({ error: "Access denied. You are not authorized to perform this action." });
-        }
             const order = new Order(
                 req.body.userId,
                 req.body.products,
