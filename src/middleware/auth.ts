@@ -15,7 +15,10 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
             const decoded: JwtPayload = jwt.verify(token, 'your_secret_key') as JwtPayload;
 
             if (decoded && decoded.userId) {
-                if (decoded.userId !== req.body.userId) {
+                console.log(decoded.userId);
+                console.log(parseInt(req.params.userId));
+                
+                if (decoded.userId !== parseInt(req.params.userId)) {
                     return res.status(401).json({ error: "Unauthorized: User IDs do not match" });
                 }
 

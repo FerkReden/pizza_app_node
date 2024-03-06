@@ -19,7 +19,7 @@ class UserService{
             const hashedPassword = await bcrypt.hash(user.password, 10);
 
             const sql = "INSERT INTO users (name, email, password, phone, token) VALUES (?, ?, ?, ?, ?)";
-            const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
+            const token = jwt.sign({ userId: user.userId }, 'your_secret_key', { expiresIn: '1h' });
             const values = [user.name, user.email, hashedPassword, user.phone, token];
 
             const data = await new Promise<any>((resolve, reject) => {
@@ -27,9 +27,10 @@ class UserService{
                     if (err) {
                         reject("Error");
                     } else {
-                        user.id = result.insertId;
+                        user.userId = result.insertId;
                         user.token = token;
-                        resolve({ token });
+                        res.setHeader('Authorization', `Bearer ${token}`);
+                        return res.json({ user, token });
                     }
                 });
             });
@@ -45,7 +46,7 @@ class UserService{
           const email = req.body.email;
           const password = req.body.password;
       
-          const sql = "SELECT id, name, email, password FROM users WHERE email = ?";
+          const sql = "SELECT userId, name, email, password FROM users WHERE email = ?";
           const values = [email];
       
           const userData = await new Promise<any>((resolve, reject) => {
@@ -64,10 +65,10 @@ class UserService{
             const passwordMatch = await bcrypt.compare(password, user.password);
       
             if (passwordMatch) {
-              const token = jwt.sign({ userId: user.id }, 'your_secret_key', { expiresIn: '1h' });
+              const token = jwt.sign({ userId: user.userId }, 'your_secret_key', { expiresIn: '1h' });
       
-              const updateTokenSql = "UPDATE users SET token = ? WHERE id = ?";
-              const updateTokenValues = [token, user.id];
+              const updateTokenSql = "UPDATE users SET token = ? WHERE userId = ?";
+              const updateTokenValues = [token, user.userId];
       
               db.query(updateTokenSql, updateTokenValues, (err) => {
                 if (err) {
@@ -91,9 +92,9 @@ class UserService{
 
     deleteUserById = async (req: Request, res: Response) => {
         try {
-            const userId = req.params.id; 
+            const userId = req.params.userId; 
             
-            const sql = "DELETE FROM users WHERE id = ?";
+            const sql = "DELETE FROM users WHERE userId = ?";
             const values = [userId];
 
             const data = await new Promise<any>((resolve, rejects) => {

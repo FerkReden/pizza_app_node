@@ -5,8 +5,10 @@ import { Order } from '../models/order';
 class OrderService{
     createOrder = async (req: Request, res: Response) => {
         try {
+            const userId = parseInt(req.params.userId)
+
             const order = new Order(
-                req.body.userId,
+                userId,
                 req.body.products,
                 req.body.totalAmount,
                 req.body.date,
@@ -82,7 +84,7 @@ class OrderService{
         try {
             const orderId = req.params.orderId; 
             
-            const sql = "DELETE FROM orders WHERE id = ?";
+            const sql = "DELETE FROM orders WHERE orderId = ?";
             const values = [orderId];
 
             const data = await new Promise<any>((resolve, rejects) => {
